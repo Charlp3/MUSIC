@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Albums Musicaux</title>
+<style>
+:root {
+    --bg-main: #e9e0cf;        /* beige doux */
+    --bg-card: #f5efe4;        /* beige clair */
+    --bg-header: #d6c8b0;      /* beige soutenu */
+    --text-main: #2b2b2b;      /* gris très foncé */
+    --accent-border: #b8a98d;  /* lignes / contours */
+    --danger: #8a2f2f;         /* rouge brun */
+    --button-bg: #d6c8b0;
+    --button-border: #948568;
+    --button-hover: #c8b89c;
+    --radius: 10px;
+    --shadow: 0 4px 10px rgba(0,0,0,0.15);
+    --font-main: -apple-system, BlinkMacSystemFont,"SF Pro Text",Roboto,Helvetica,Arial,sans-serif;
+}
+
+body{
+    background-color:var(--bg-main);
+    color:var(--text-main);
+    font-family:var(--font-main);
+    margin:0;
+    padding:0;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+}
+
+header{
+    background:var(--bg-header);
+    color:var(--text-main);
+    padding:12px 16px;
+    box-shadow:var(--shadow);
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:8px;
+}
+header .title-block{
+    font-size:1.1rem;
+    font-weight:600;
+    line-height:1.2;
+}
+header .version-block{
+    font-size:.8rem;
+    opacity:.8;
+}
+header .actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+}
+button,.small-btn{
+    background:var(--button-bg);
+    border:1px solid var(--button-border);
+    border-radius:var(--radius);
+    padding:8px 12px;
+    font-size:.9rem;
+    line-height:1.2;
+    color:var(--text-main);
+    cursor:pointer;
+}
+button:hover,.small-btn:hover{
+    background:var(--button-hover);
+}
+
+main{
+    flex:1;
+    padding:16px;
+}
+
+.table-wrapper{
+    background:var(--bg-card);
+    border:1px solid var(--accent-border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    overflow-x:auto;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:760px;
+    font-size:.9rem;
+}
+thead th{
+    background:var(--bg-header);
+    color:var(--text-main);
+    padding:10px;
+    text-align:left;
+    position:sticky;
+    top:0;
+    cursor:pointer;
+    user-select:none;
+    border-bottom:1px solid var(--accent-border);
+    white-space:nowrap;
+}
+thead th.sortable::after{
+    content:" ⇅";
+    font-size:.8rem;
+    opacity:.6;
+}
+tbody tr:nth-child(even){
+    background:rgba(255,255,255,0.25);
+}
+tbody td{
+    padding:10px;
+    vertical-align:top;
+    border-bottom:1px solid var(--accent-border);
+    color:var(--text-main);
+}
+td .row-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+}
+.delete-btn{
+    border:1px solid var(--danger);
+    color:var(--danger);
+    background:transparent;
+}
+.delete-btn:hover{
+    background:rgba(138,47,47,0.08);
+}
+
+.tag-inconnu{
+    display:inline-block;
+    background:#fffdf8;
+    border:1px solid var(--accent-border);
+    border-radius:var(--radius);
+    font-size:.7rem;
+    line-height:1.2;
+    padding:2px 6px;
+    opacity:.8;
+}
+
+footer{
+    text-align:center;
+    font-size:.8rem;
+    color:var(--text-main);
+    opacity:.7;
+    padding:16px 12px 32px;
+}
+
+/* POPUP */
+dialog{
+    border:1px solid var(--accent-border);
+    border-radius:var(--radius);
+    padding:16px;
+    background:var(--bg-card);
+    box-shadow:var(--shadow);
+    width:min(90vw,400px);
+}
+dialog::backdrop{
+    background:rgba(0,0,0,.4);
+}
+.popup-header{
+    font-weight:600;
+    font-size:1rem;
+    margin-bottom:8px;
+    color:var(--text-main);
+}
+.popup-section{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-bottom:12px;
+}
+.popup-section label{
+    font-size:.8rem;
+    opacity:.8;
+}
+.popup-section input,
+.popup-section textarea{
+    width:100%;
+    border-radius:var(--radius);
+    border:1px solid var(--accent-border);
+    background:#fffdf8;
+    font-family:var(--font-main);
+    font-size:.9rem;
+    padding:8px;
+    box-sizing:border-box;
+}
+.popup-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    flex-wrap:wrap;
+}
+.muted{
+    font-size:.8rem;
+    opacity:.7;
+}
+</style>
+</head>
+<body>
+
+<header>
+    <div class="title-block">
+        <div>Catalogue Albums Musicaux</div>
+        <div class="version-block">v1.0 — © Pierre Charlier 2025</div>
+    </div>
+
+    <div class="actions">
+        <button id="addEmptyBtn">Ajouter album vide</button>
+        <button id="saveBtn">Sauvegarder</button>
+        <button id="loadBtn">Restaurer</button>
+        <button id="clearAllBtn" class="delete-btn">Tout effacer</button>
+    </div>
+</header>
+
+<main>
+    <div class="table-wrapper">
+        <table id="albumTable">
+            <thead>
+                <tr>
+                    <th class="sortable" data-col="title">Album</th>
+                    <th class="sortable" data-col="artist">Artiste</th>
+                    <th>Autres infos</th>
+                    <th class="sortable" data-col="year">Année</th>
+                    <th>Pistes</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="albumTbody">
+                <!-- lignes générées en JS -->
+            </tbody>
+        </table>
+    </div>
+</main>
+
+<footer>
+    Données stockées localement sur cet appareil.
+</footer>
+
+<!-- POPUP EDITION -->
+<dialog id="trackDialog">
+    <div class="popup-header">Détails de l'album</div>
+
+    <div class="popup-section">
+        <label for="dialogTitle">Titre de l'album</label>
+        <input type="text" id="dialogTitle">
+    </div>
+
+    <div class="popup-section">
+        <label for="dialogArtist">Artiste / Groupe</label>
+        <input type="text" id="dialogArtist">
+    </div>
+
+    <div class="popup-section">
+        <label for="dialogInfo">Autres infos (Live, Best of, etc.)</label>
+        <input type="text" id="dialogInfo">
+    </div>
+
+    <div class="popup-section">
+        <label for="dialogYear">Année</label>
+        <input type="text" id="dialogYear" inputmode="numeric">
+    </div>
+
+    <div class="popup-section">
+        <label for="dialogTracks">Titres des plages (une ligne par piste)</label>
+        <textarea id="dialogTracks" rows="8" style="resize:none;"></textarea>
+        <div class="muted">Exemple:<br>01. Intro<br>02. Chanson suivante<br>...</div>
+    </div>
+
+    <div class="popup-actions">
+        <button id="cancelDialogBtn">Annuler</button>
+        <button id="saveDialogBtn">Enregistrer</button>
+    </div>
+</dialog>
+
+<script>
+/* ------------------------------
+   Données initiales (A → W)
+   Chaque objet = une ligne du tableau
+---------------------------------*/
+let albums = [
+    {title:"La thune - Single",artist:"Angèle",info:"",year:"",tracks:""},
+    {title:"Ma vie en musique",artist:"Annie Cordy",info:"Best of 50 titres",year:"",tracks:""},
+    {title:"Amor Amor",artist:"Arielle Dombasle",info:"",year:"",tracks:""},
+    {title:"C'est si bon",artist:"Arielle Dombasle",info:"",year:"",tracks:""},
+    {title:"Diva Latina",artist:"Arielle Dombasle",info:"",year:"",tracks:""},
+    {title:"Extase",artist:"Arielle Dombasle",info:"",year:"",tracks:""},
+    {title:"Glamour à mort",artist:"Arielle Dombasle",info:"",year:"",tracks:""},
+    {title:"Liberta",artist:"Arielle Dombasle",info:"",year:"",tracks:""},
+
+    {title:"Bach: Brandenburg Concertos",artist:"Bach / Reinhard Goebel / Musica Antiqua Köln",info:"Concertos Brandebourgeois",year:"",tracks:""},
+    {title:"Hymnes Nationaux",artist:"Batterie Fanfare de la Garde Républicaine",info:"",year:"",tracks:""},
+    {title:"Help!",artist:"The Beatles",info:"",year:"",tracks:""},
+    {title:"Please Please Me",artist:"The Beatles",info:"",year:"",tracks:""},
+    {title:"Revolver",artist:"The Beatles",info:"",year:"",tracks:""},
+    {title:"Sgt. Pepper's Lonely Hearts Club Band",artist:"The Beatles",info:"",year:"",tracks:""},
+    {title:"Yellow Submarine Songtrack",artist:"The Beatles",info:"",year:"",tracks:""},
+    {title:"Beethoven: Violin Sonatas (Oistrakh / Oborin)",artist:"Beethoven",info:"Sonates violon/piano",year:"",tracks:""},
+    {title:"Symphony No. 3 \"Eroica\"",artist:"Beethoven / Eugen Jochum",info:"Concert Classics",year:"",tracks:""},
+    {title:"La p'tite monnaie",artist:"Bénabar et associés",info:"",year:"",tracks:""},
+
+    {title:"Carmina Burana",artist:"Carl Orff / New Jersey Symphony Orchestra",info:"",year:"",tracks:""},
+    {title:"Encore un soir (Deluxe)",artist:"Céline Dion",info:"Deluxe",year:"",tracks:""},
+    {title:"Charles Trenet : 100 chansons",artist:"Charles Trenet",info:"100 chansons",year:"",tracks:""},
+
+    {title:"Big Band",artist:"Eddy Mitchell",info:"★",year:"",tracks:""},
+    {title:"Come Back",artist:"Eddy Mitchell",info:"★",year:"",tracks:""},
+    {title:"Frenchy",artist:"Eddy Mitchell",info:"★",year:"",tracks:""},
+    {title:"Grand écran",artist:"Eddy Mitchell",info:"★",year:"",tracks:""},
+    {title:"Héros",artist:"Eddy Mitchell",info:"★",year:"",tracks:""},
+    {title:"Jambalaya",artist:"Eddy Mitchell",info:"★",year:"",tracks:""},
+    {title:"La même tribu (Vol. 1)",artist:"Eddy Mitchell",info:"★",year:"",tracks:""},
+    {title:"La même tribu (Vol. 2)",artist:"Eddy Mitchell",info:"★",year:"",tracks:""},
+    {title:"Les Nocturnes",artist:"Eddy Mitchell",info:"★",year:"",tracks:""},
+    {title:"Les 100 Plus Belles Chansons",artist:"Eddy Mitchell",info:"★ Best of",year:"",tracks:""},
+
+    {title:"Bruitage",artist:"Effets sonores",info:"Bruits / FX",year:"",tracks:""},
+    {title:"The Complete '70s Albums Collection",artist:"Elvis Presley",info:"Compil 70s",year:"",tracks:""},
+    {title:"The Essential Elvis Presley",artist:"Elvis Presley",info:"Best of / Essential",year:"",tracks:""},
+
+    {title:"L'Essentiel",artist:"Françoise Hardy",info:"Compilation",year:"",tracks:""},
+    {title:"Parenthèses...",artist:"Françoise Hardy",info:"",year:"",tracks:""},
+
+    {title:"The Best of Georges Brassens",artist:"Georges Brassens",info:"Best of",year:"",tracks:""},
+    {title:"Les dernières chansons...",artist:"Georges Brassens & Jean Bertola",info:"Dernières chansons",year:"",tracks:""},
+
+    {title:"Haydn: Symphonies #94 'Surprise' / #101 'The Clock'",artist:"Haydn / London Philharmonic / Eugen Jochum",info:"",year:"",tracks:""},
+    {title:"Haydn: The 'London' Symphonies",artist:"Haydn / Sir Georg Solti",info:"",year:"",tracks:""},
+    {title:"Symphonies 99-104 (Part 1)",artist:"Haydn / Royal Philharmonic / Sir Thomas Beecham",info:"",year:"",tracks:""},
+    {title:"Symphonies 99-104 (Part 2)",artist:"Haydn / Royal Philharmonic / Sir Thomas Beecham",info:"",year:"",tracks:""},
+
+    {title:"Chambre Avec Vue",artist:"Henri Salvador",info:"",year:"",tracks:""},
+    {title:"Marches Militaires Internationales",artist:"International",info:"Marches militaires",year:"",tracks:""},
+
+    {title:"Les marquises",artist:"Jacques Brel",info:"",year:"",tracks:""},
+    {title:"Suivre l'étoile",artist:"Jacques Brel",info:"Intégrale ? ★",year:"",tracks:""},
+    {title:"50 plus belles chansons",artist:"Jacques Brel",info:"Compil / 50",year:"",tracks:""},
+
+    {title:"Zanaka",artist:"Jain",info:"",year:"",tracks:""},
+    {title:"Birkin / Gainsbourg : le symphonique",artist:"Jane Birkin",info:"Symphonique ★",year:"",tracks:""},
+    {title:"Imagine",artist:"John Lennon",info:"★",year:"",tracks:""},
+
+    {title:"Ça ne finira jamais",artist:"Johnny Hallyday",info:"★",year:"",tracks:""},
+    {title:"Le Coeur D'Un Homme",artist:"Johnny Hallyday",info:"★",year:"",tracks:""},
+    {title:"De l'Amour",artist:"Johnny Hallyday",info:"★",year:"",tracks:""},
+    {title:"Jamais seul",artist:"Johnny Hallyday",info:"★",year:"",tracks:""},
+    {title:"L'attente",artist:"Johnny Hallyday",info:"★",year:"",tracks:""},
+    {title:"Ma vérité",artist:"Johnny Hallyday",info:"★",year:"",tracks:""},
+    {title:"Mon pays c'est l'amour",artist:"Johnny Hallyday",info:"★",year:"",tracks:""},
+    {title:"Rester vivant",artist:"Johnny Hallyday",info:"★",year:"",tracks:""},
+    {title:"Les 100 Plus Belles Chansons",artist:"Johnny Hallyday",info:"Best of ★",year:"",tracks:""},
+
+    {title:"Prénoms filles et garçons... (Album 9)",artist:"Joyeux Anniversaire",info:"Prénoms A à S",year:"",tracks:""},
+    {title:"Au Bon Vieux Temps des Orgues de Foire",artist:"Jules Et Son Limonaire",info:"Orgues de foire",year:"",tracks:""},
+
+    {title:"À nos amours (Édition Deluxe)",artist:"Julien Clerc",info:"Deluxe",year:"",tracks:""},
+    {title:"Fans, je vous aime",artist:"Julien Clerc",info:"",year:"",tracks:""},
+    {title:"Fou, peut-être",artist:"Julien Clerc",info:"",year:"",tracks:""},
+    {title:"Partout la musique vient",artist:"Julien Clerc",info:"",year:"",tracks:""},
+
+    {title:"Can't Forget: A Souvenir of the Grand Tour",artist:"Leonard Cohen",info:"Live ★",year:"",tracks:""},
+    {title:"Clips vidéo",artist:"Leonard Cohen",info:"Vidéos ★",year:"",tracks:""},
+    {title:"Live In Dublin",artist:"Leonard Cohen",info:"Live ★",year:"",tracks:""},
+    {title:"Live In London",artist:"Leonard Cohen",info:"Live ★",year:"",tracks:""},
+    {title:"Les Nocturnes",artist:"Leonard Cohen",info:"★",year:"",tracks:""},
+    {title:"Popular Problems",artist:"Leonard Cohen",info:"★",year:"",tracks:""},
+    {title:"Songs From the Road",artist:"Leonard Cohen",info:"Live ★",year:"",tracks:""},
+    {title:"The Complete Studio Albums Collection",artist:"Leonard Cohen",info:"Coffret ★",year:"",tracks:""},
+    {title:"You Want It Darker",artist:"Leonard Cohen",info:"★",year:"",tracks:""},
+
+    {title:"Premier album (Remasterisé)",artist:"Lio",info:"Remaster",year:"",tracks:""},
+
+    {title:"Madame X",artist:"Madonna",info:"",year:"",tracks:""},
+    {title:"Ray of Light",artist:"Madonna",info:"",year:"",tracks:""},
+    {title:"Rebel Heart (Deluxe)",artist:"Madonna",info:"Deluxe",year:"",tracks:""},
+
+    {title:"Christmas",artist:"Michael Bublé",info:"Noël / Christmas",year:"",tracks:""},
+
+    {title:"Être une femme (2010)",artist:"Michel Sardou",info:"",year:"",tracks:""},
+    {title:"Le choix du fou",artist:"Michel Sardou",info:"",year:"",tracks:""},
+    {title:"Les grands moments - Best of",artist:"Michel Sardou",info:"Best of",year:"",tracks:""},
+
+    {title:"La grande roue",artist:"Salvatore Adamo",info:"★",year:"",tracks:""},
+    {title:"Le bal des gens bien",artist:"Salvatore Adamo",info:"★",year:"",tracks:""},
+    {title:"Par les temps qui courent",artist:"Salvatore Adamo",info:"★",year:"",tracks:""},
+    {title:"La Part De l'Ange",artist:"Salvatore Adamo",info:"★",year:"",tracks:""},
+    {title:"Regards",artist:"Salvatore Adamo",info:"★",year:"",tracks:""},
+    {title:"Si vous saviez...",artist:"Salvatore Adamo",info:"★",year:"",tracks:""},
+    {title:"Triple Best of Adamo",artist:"Salvatore Adamo",info:"Triple Best Of ★",year:"",tracks:""},
+    {title:"Zanzibar",artist:"Salvatore Adamo",info:"★",year:"",tracks:""},
+    {title:"De toi à moi",artist:"Salvatore Adamo",info:"★",year:"",tracks:""},
+    {title:"In French Please!",artist:"Salvatore Adamo",info:"",year:"",tracks:""},
+    {title:"L'amour n'a jamais tort",artist:"Salvatore Adamo",info:"★",year:"",tracks:""},
+    {title:"Adamo chante Becaud",artist:"Salvatore Adamo",info:"Hommage à Bécaud ★",year:"",tracks:""},
+
+    {title:"Chansons de la Révolution",artist:"Les Sans Culottes",info:"",year:"",tracks:""},
+    {title:"Rétrospective - Triple Best Of",artist:"Sheila",info:"Triple Best Of",year:"",tracks:""},
+
+    {title:"Bach: Toccata & Fugue BWV 565 / Préludes & Fugues",artist:"Johann Sebastian Bach / Simon Preston",info:"Orgue",year:"",tracks:""},
+    {title:"Remixes - Single",artist:"Stromae",info:"Single / Remixes",year:"",tracks:""},
+
+    {title:"Avec toi...",artist:"Sylvie Vartan",info:"",year:"",tracks:""},
+    {title:"Baby c'est vou",artist:"Sylvie Vartan",info:"",year:"",tracks:""},
+    {title:"Les 50 Plus belles chansons",artist:"Sylvie Vartan",info:"Compil / 50",year:"",tracks:""},
+    {title:"Nouvelle vague",artist:"Sylvie Vartan",info:"★",year:"",tracks:""},
+    {title:"Soleil bleu",artist:"Sylvie Vartan",info:"★",year:"",tracks:""},
+    {title:"Sylvie in Nashville",artist:"Sylvie Vartan",info:"★ Nashville",year:"",tracks:""},
+    {title:"Toutes peines confondues",artist:"Sylvie Vartan",info:"★",year:"",tracks:""},
+
+    {title:"Musical Moments To Remember, Vol. 1",artist:"The Andrews Sisters",info:"",year:"",tracks:""},
+    {title:"50+ Greatest Hits",artist:"The Andrews Sisters",info:"Greatest Hits ★",year:"",tracks:""},
+
+    {title:"Vivaldi: The Four Seasons",artist:"Vivaldi",info:"",year:"",tracks:""},
+
+    {title:"Savages",artist:"The Webb Sisters",info:"★",year:"",tracks:""},
+    {title:"When Will You Come Home?",artist:"The Webb Sisters",info:"★",year:"",tracks:""},
+
+    {title:"Best of Les Parisiennes",artist:"Les Parisiennes",info:"Best of",year:"",tracks:""},
+    {title:"Les Parisiennes",artist:"Les Parisiennes",info:"",year:"",tracks:""},
+
+    {title:"Patricia Kaas",artist:"Patricia Kaas",info:"★",year:"",tracks:""},
+    {title:"19 par Patricia Kaas (19 titres essentiels)",artist:"Patricia Kaas",info:"Compilation",year:"",tracks:""},
+
+    {title:"Drôle de Poésie !",artist:"Pierre Perret",info:"",year:"",tracks:""},
+    {title:"Du Rire Aux Larmes",artist:"Pierre Perret",info:"★",year:"",tracks:""},
+    {title:"Humour liberté",artist:"Pierre Perret",info:"",year:"",tracks:""},
+    {title:"La femme grillagée",artist:"Pierre Perret",info:"★",year:"",tracks:""},
+    {title:"La tribu de Pierre Perret...",artist:"Pierre Perret (& invités)",info:"Hommage / collectif",year:"",tracks:""},
+    {title:"Les dieux paillards",artist:"Pierre Perret",info:"★ (E)",year:"",tracks:""},
+    {title:"Mes chansons engagées",artist:"Pierre Perret",info:"★",year:"",tracks:""},
+
+    {title:"Grandes chansons",artist:"Ray Ventura",info:"",year:"",tracks:""},
+    {title:"Rita Mitsouko",artist:"Les Rita Mitsouko",info:"",year:"",tracks:""},
+
+    {title:"Belgian Military Marches Vol. 1 (Cavalry)",artist:"Royal Symphonic Band of the Belgian Guides",info:"Marches militaires",year:"",tracks:""},
+    {title:"Belgian Military Marches Vol. 2 (Infantry)",artist:"Royal Symphonic Band of the Belgian Guides",info:"Marches militaires",year:"",tracks:""},
+    {title:"Belgian Military Marches Vol. 3 (Artillery...)",artist:"Royal Symphonic Band of the Belgian Guides",info:"Marches militaires",year:"",tracks:""},
+    {title:"French Military Marches",artist:"Royal Symphonic Band of the Belgian Guides",info:"Marches militaires",year:"",tracks:""},
+
+    {title:"Mozart: Piano Concertos (Elvira Madigan…)",artist:"Mozart",info:"Concertos piano",year:"",tracks:""},
+    {title:"Orchestre National... (Mozart)",artist:"Mozart / Orchestre National ?",info:"Titre incomplet",year:"",tracks:""},
+    {title:"A Very Special Christmas (65 Festive Tracks)",artist:"Multi-interprètes",info:"Compilation Noël",year:"",tracks:""},
+    {title:"In the Summertime",artist:"Mungo Jerry",info:"",year:"",tracks:""},
+    {title:"Anthologie de la musique militaire française",artist:"Musique des équipages de la Flotte / etc.",info:"Des origines à 1870",year:"",tracks:""},
+    {title:"Marche du 13ème de Ligne",artist:"Musique des Guides",info:"Pierre Charlier crédit pochette",year:"",tracks:""},
+    {title:"Musiques du Premier Empire",artist:"Musiques de la Garde Impériale / etc.",info:"Napoléon ★",year:"",tracks:""},
+    {title:"Dance Remixes",artist:"Mylène Farmer",info:"Remixes",year:"",tracks:""},
+    {title:"Bretonne",artist:"Nolwenn Leroy",info:"★",year:"",tracks:""},
+    {title:"Gemme",artist:"Nolwenn Leroy",info:"★",year:"",tracks:""},
+    {title:"Ô filles de l'eau",artist:"Nolwenn Leroy",info:"★",year:"",tracks:""},
+    {title:"The 50 Greatest Pieces of Classical Music",artist:"London Philharmonic Orchestra",info:"Compilation classique",year:"",tracks:""},
+    {title:"La belle époque des orgues Gavioli",artist:"Orgue Gavioli",info:"Orgues mécaniques",year:"",tracks:""},
+    {title:"Paolo Conte (Tournée² ?)",artist:"Paolo Conte",info:"Live ?",year:"",tracks:""},
+    {title:"Wonderful",artist:"Paolo Conte",info:"",year:"",tracks:""}
+];
+
+/* ----- stockage local ----- */
+const STORAGE_KEY="albumsCatalogueV1";
+
+function saveToLocal(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(albums));
+    alert("Sauvegardé dans l'appareil ✅");
+}
+function loadFromLocal(){
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw){
+        alert("Rien à restaurer.");
+        return;
+    }
+    try{
+        albums=JSON.parse(raw);
+        renderTable();
+        alert("Liste restaurée depuis l'appareil ✅");
+    }catch(e){
+        alert("Erreur de restauration.");
+    }
+}
+
+/* ----- rendu du tableau ----- */
+const tbody=document.getElementById("albumTbody");
+
+function renderTable(sortCol=null, sortDir="asc"){
+    // copie
+    let rows=[...albums];
+
+    // tri si demandé
+    if(sortCol){
+        rows.sort((a,b)=>{
+            const va=(a[sortCol]||"").toString().toLowerCase();
+            const vb=(b[sortCol]||"").toString().toLowerCase();
+            if(va<vb) return sortDir==="asc"?-1:1;
+            if(va>vb) return sortDir==="asc"?1:-1;
+            return 0;
+        });
+    }
+
+    tbody.innerHTML="";
+    rows.forEach((album, idxOriginal)=>{
+        // on garde l'index réel pour pouvoir éditer/supprimer
+        const tr=document.createElement("tr");
+
+        const tdTitle=document.createElement("td");
+        tdTitle.textContent=album.title||"";
+        if(!album.title && !album.artist){
+            // ligne vide marquée
+            const tag=document.createElement("span");
+            tag.className="tag-inconnu";
+            tag.textContent="inconnu";
+            tdTitle.appendChild(document.createElement("br"));
+            tdTitle.appendChild(tag);
+        }
+
+        const tdArtist=document.createElement("td");
+        tdArtist.textContent=album.artist||"";
+
+        const tdInfo=document.createElement("td");
+        tdInfo.textContent=album.info||"";
+
+        const tdYear=document.createElement("td");
+        tdYear.textContent=album.year||"";
+
+        const tdTracks=document.createElement("td");
+        const trackBtn=document.createElement("button");
+        trackBtn.textContent="Pistes";
+        trackBtn.onclick=()=>openDialog(idxOriginal);
+        tdTracks.appendChild(trackBtn);
+
+        const tdActions=document.createElement("td");
+        const actionsDiv=document.createElement("div");
+        actionsDiv.className="row-actions";
+
+        const editBtn=document.createElement("button");
+        editBtn.textContent="Éditer";
+        editBtn.onclick=()=>openDialog(idxOriginal);
+
+        const delBtn=document.createElement("button");
+        delBtn.textContent="Supprimer";
+        delBtn.className="delete-btn";
+        delBtn.onclick=()=>{
+            if(confirm("Supprimer définitivement cette ligne ?")){
+                albums.splice(idxOriginal,1);
+                renderTable(currentSortCol,currentSortDir);
+                autoSave();
+            }
+        };
+
+        actionsDiv.appendChild(editBtn);
+        actionsDiv.appendChild(delBtn);
+        tdActions.appendChild(actionsDiv);
+
+        tr.appendChild(tdTitle);
+        tr.appendChild(tdArtist);
+        tr.appendChild(tdInfo);
+        tr.appendChild(tdYear);
+        tr.appendChild(tdTracks);
+        tr.appendChild(tdActions);
+
+        tbody.appendChild(tr);
+    });
+}
+
+/* ----- popup édition ----- */
+const dialog=document.getElementById("trackDialog");
+const dialogTitle=document.getElementById("dialogTitle");
+const dialogArtist=document.getElementById("dialogArtist");
+const dialogInfo=document.getElementById("dialogInfo");
+const dialogYear=document.getElementById("dialogYear");
+const dialogTracks=document.getElementById("dialogTracks");
+const cancelDialogBtn=document.getElementById("cancelDialogBtn");
+const saveDialogBtn=document.getElementById("saveDialogBtn");
+
+let editingIndex=null;
+
+function openDialog(index){
+    editingIndex=index;
+    const a=albums[index];
+    dialogTitle.value=a.title||"";
+    dialogArtist.value=a.artist||"";
+    dialogInfo.value=a.info||"";
+    dialogYear.value=a.year||"";
+    dialogTracks.value=a.tracks||"";
+    dialog.showModal();
+}
+
+cancelDialogBtn.onclick=function(){
+    dialog.close();
+    editingIndex=null;
+};
+
+saveDialogBtn.onclick=function(){
+    if(editingIndex===null){return;}
+    const a=albums[editingIndex];
+    a.title=dialogTitle.value.trim();
+    a.artist=dialogArtist.value.trim();
+    a.info=dialogInfo.value.trim();
+    a.year=dialogYear.value.trim();
+    a.tracks=dialogTracks.value.trim();
+
+    dialog.close();
+    editingIndex=null;
+    renderTable(currentSortCol,currentSortDir);
+    autoSave();
+};
+
+/* ----- ajout d'un album vide ----- */
+document.getElementById("addEmptyBtn").onclick=function(){
+    albums.push({
+        title:"",
+        artist:"",
+        info:"",
+        year:"",
+        tracks:""
+    });
+    renderTable(currentSortCol,currentSortDir);
+    autoSave();
+};
+
+/* ----- sauvegarde / restauration / effacement global ----- */
+document.getElementById("saveBtn").onclick=saveToLocal;
+document.getElementById("loadBtn").onclick=loadFromLocal;
+document.getElementById("clearAllBtn").onclick=function(){
+    if(confirm("Tout effacer la liste ACTUELLE ? (Pas le stockage)")){
+        albums=[];
+        renderTable(currentSortCol,currentSortDir);
+        autoSave();
+    }
+};
+
+/* ----- tri par en-tête ----- */
+let currentSortCol=null;
+let currentSortDir="asc";
+
+document.querySelectorAll("th.sortable").forEach(th=>{
+    th.addEventListener("click",()=>{
+        const col=th.dataset.col;
+        if(currentSortCol===col){
+            currentSortDir=currentSortDir==="asc"?"desc":"asc";
+        }else{
+            currentSortCol=col;
+            currentSortDir="asc";
+        }
+        renderTable(currentSortCol,currentSortDir);
+    });
+});
+
+/* ----- autosave (localStorage) ----- */
+function autoSave(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(albums));
+}
+
+/* Rendu initial */
+renderTable();
+</script>
+
+</body>
+</html>
